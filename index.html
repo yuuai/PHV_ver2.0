@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PHV & 成熟度モニタリング Pro - AWAKE</title>
+    <style>
+        :root { --phase1: #e1f5fe; --phase2: #bbdefb; --phase3: #90caf9; --phase4: #42a5f5; --accent: #1a73e8; }
+        body { font-family: sans-serif; margin: 0; padding: 15px; background: #f0f2f5; color: #333; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        h1 { color: var(--accent); text-align: center; font-size: 1.4rem; border-bottom: 2px solid var(--accent); padding-bottom: 8px; margin-bottom: 20px;}
+        .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        label { font-size: 0.8rem; font-weight: bold; color: #555; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 1rem; }
+        .full-width { grid-column: span 2; }
+        button { width: 100%; padding: 16px; background: var(--accent); color: white; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        #result-area { display: none; margin-top: 25px; }
+        .score-card { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .score-box { background: #f8f9fa; padding: 15px; border-radius: 10px; text-align: center; border-top: 4px solid var(--accent); }
+        .score-label { font-size: 0.75rem; font-weight: bold; color: #666; }
+        .score-val { font-size: 1.4rem; font-weight: bold; color: var(--accent); }
+        .score-detail { font-size: 1.1rem; font-weight: bold; color: #d32f2f; margin-top: 8px; border-top: 1px dashed #ccc; padding-top: 8px; }
+        .chart-container { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 15px; margin: 15px 0; position: relative; }
+        canvas { width: 100%; height: auto; display: block; }
+        .advice-panel { padding: 18px; border-radius: 10px; margin-top: 15px; border-left: 6px solid #1557b0; }
+        .notes { font-size: 0.7rem; color: #777; margin-top: 20px; padding: 10px; background: #eee; border-radius: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>PHVモニタリング (JFA準拠)</h1>
+
+    <div class="input-grid">
+        <div><label>性別</label><select id="gender"><option value="male">男子 (日本人サッカー専用式)</option><option value="female">女子 (世界標準予測式)</option></select></div>
+        <div><label>身長 (cm)</label><input type="number" id="height" step="0.1" placeholder="身長を入力"></div>
+        <div><label>体重 (kg)</label><input type="number" id="weight" step="0.1" placeholder="体重を入力"></div>
+        <div><label>座高 (cm)</label><input type="number" id="sittingHeight" step="0.1" placeholder="座高を入力"></div>
+        <div class="full-width"><label>生年月日</label><input type="date" id="birthDate"></div>
+        <div class="full-width"><label>計測日</label><input type="date" id="testDate"></div>
+    </div>
+    <button onclick="calculate()">分析・グラフ作成</button>
+
+    <div id="result-area">
+        <div class="score-card">
+            <div class="score-box"><div class="score-label">現在の年齢</div><div><span class="score-val" id="res-age">--</span><span class="score-unit">歳</span></div></div>
+            <div class="score-box"><div class="score-label">予測PHV年齢</div><div><span class="score-val" id="res-phv-age">--</span><span class="score-unit">歳</span></div></div>
+            <div class="score-box" style="grid-column: span 2;">
+                <div class="score-label">成熟度 (Maturity Offset)</div>
+                <div class="score-val" id="res-offset">--</div>
+                <div class="score-detail" id="res-ym">--</div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <p style="font-size: 0.8rem; margin: 0 0 10px 0; font-weight: bold; text-align: center;">身長発育速度曲線と各フェーズ</p>
+            <canvas id="velocityChart" width="500" height="250"></canvas>
+        </div>
+
+        <div id="advice-panel" class="advice-panel">
+            <div id="phase-label" style="font-weight:bold; color:#1557b0; font-size:1.2rem;"></div>
+            <div id="advice-text" style="font-size:0.9rem; white-space:pre-wrap; margin-top:10px; line-height:1.6;"></div>
+        </div>
+
+        <div class="notes" id="logic-note"></div>
+    </div>
+</div>
+
+<script>
+window.onload = function() {
+    document.getElementById('height').value = "";
+    document.getElementById('weight').value = "";
+    document.getElementById('sittingHeight').value = "";
+    document.getElementById('birthDate').value = "";
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('testDate').value = today;
+};
+
+function calculate() {
+    const gender = document.getElementById('gender').value;
+    const h = parseFloat(document.getElementById('height').value);
+    const w = parseFloat(document.getElementById('weight').value);
+    const sh = parseFloat(document.getElementById('sittingHeight').value);
+    const birthVal = document.getElementById('birthDate').value;
+    const testVal = document.getElementById('testDate').value;
+    
+    if (!h || !w || !sh || !birthVal || !testVal) {
+        alert("未入力の項目があります。");
+        return;
+    }
+
+    const birthDate = new Date(birthVal);
+    const testDate = new Date(testVal);
+    const age = (testDate - birthDate) / (1000 * 60 * 60 * 24 * 365.25);
+    
+    let offset;
+    if (gender === 'male') {
+        const basePHV = 13.87; 
+        offset = age - basePHV;
+        document.getElementById('logic-note').innerHTML = "※男子：中馬(2022) 日本人男子サッカー選手専用式準拠";
+    } else {
+        offset = -7.709133 + (0.0042232 * (age * h));
+        document.getElementById('logic-note').innerHTML = "※女子：Moore(2015) 世界標準予測式";
+    }
+
+    const phvAge = age - offset;
+    document.getElementById('res-age').innerText = age.toFixed(2);
+    document.getElementById('res-phv-age').innerText = phvAge.toFixed(2);
+    document.getElementById('res-offset').innerText = (offset > 0 ? "+" : "") + offset.toFixed(2) + " 歳";
+
+    const absO = Math.abs(offset);
+    const yy = Math.floor(absO);
+    const mm = Math.round((absO - yy) * 12);
+    const finalYY = mm === 12 ? yy + 1 : yy;
+    const finalMM = mm === 12 ? 0 : mm;
+
+    document.getElementById('res-ym').innerText = (offset < 0) 
+        ? `あと ${finalYY}年 ${finalMM}ヶ月` 
+        : `PHVから ${finalYY}年 ${finalMM}ヶ月 経過`;
+
+    document.getElementById('result-area').style.display = 'block';
+    drawChart(offset);
+    setAdvice(offset);
+}
+
+function drawChart(currentOffset) {
+    const canvas = document.getElementById('velocityChart');
+    const ctx = canvas.getContext('2d');
+    const cw = canvas.width, ch = canvas.height, padding = 40;
+    ctx.clearRect(0, 0, cw, ch);
+
+    // フェーズ背景色の描画領域設定
+    const getX = (offset) => padding + ((offset + 5) / 10) * (cw - padding * 2);
+    
+    // 背景色の描画 (JFAフェーズ区分に準拠)
+    const phases = [
+        { start: -5, end: -2.5, color: '#e1f5fe', label: 'F1' },
+        { start: -2.5, end: -1.0, color: '#bbdefb', label: 'F2' },
+        { start: -1.0, end: 1.0, color: '#90caf9', label: 'F3' },
+        { start: 1.0, end: 3.5, color: '#42a5f5', label: 'F4' },
+        { start: 3.5, end: 5, color: '#1e88e5', label: '' }
+    ];
+
+    phases.forEach(p => {
+        const xStart = getX(p.start);
+        const xEnd = getX(p.end);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(xStart, padding, xEnd - xStart, ch - padding * 2);
+        
+        // ラベル描画
+        ctx.fillStyle = '#555';
+        ctx.font = 'bold 10px sans-serif';
+        ctx.fillText(p.label, xStart + 5, padding + 15);
+    });
+
+    // 軸と曲線の描画
+    ctx.beginPath(); ctx.strokeStyle = '#999'; ctx.lineWidth = 1;
+    ctx.moveTo(padding, ch - padding); ctx.lineTo(cw - padding, ch - padding); ctx.stroke();
+    
+    ctx.beginPath(); ctx.strokeStyle = '#1a73e8'; ctx.lineWidth = 3;
+    for (let i = 0; i <= 100; i++) {
+        let xVal = -5 + (i / 100) * 10;
+        let xPos = getX(xVal);
+        let yVal = Math.exp(-Math.pow(xVal, 2) / 5); 
+        let yPos = (ch - padding) - (yVal * (ch - padding * 2) * 0.8);
+        if (i === 0) ctx.moveTo(xPos, yPos); else ctx.lineTo(xPos, yPos);
+    }
+    ctx.stroke();
+
+    // 現在地のマーカー
+    let markerX = getX(currentOffset);
+    let markerVal = Math.exp(-Math.pow(currentOffset, 2) / 5);
+    let markerY = (ch - padding) - (markerVal * (ch - padding * 2) * 0.8);
+    markerX = Math.max(padding, Math.min(cw - padding, markerX));
+    
+    // マーカー影
+    ctx.shadowBlur = 10; ctx.shadowColor = "rgba(0,0,0,0.3)";
+    ctx.beginPath(); ctx.fillStyle = '#ff1744'; ctx.arc(markerX, markerY, 8, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.stroke();
+}
+
+function setAdvice(offset) {
+    let p = "", a = "", c = "";
+    if (offset < -2.5) { p = "フェーズ 1"; a = "積極的にいろいろな動きをとりいれて、動きづくりをしましょう。バランス感覚を大切にしながら遊びの中で相手との力比べをしてみましょう。転んでもケガをしないように前転や後転などの身なしを身につけることも大切です。"; c = "#e1f5fe"; }
+    else if (offset < -1.0) { p = "フェーズ 2"; a = "自分の体重を利用したエクササイズを開始しましょう。コアトレーニングやムーブメントプレパレーションがおすすめです。正しい動作を身につけて、初めは少ない回数から徐々に増やしましょう。"; c = "#bbdefb"; }
+    else if (offset < 1.0) { p = "フェーズ 3 (ピーク期)"; a = "ゴムチューブや軽い負荷での基礎パワートレーニングを導入し始めても良い段階です。ジャンプ動作なども低い高さから始めます。少ない回数、少ないセット数で十分です。無理せず専門家と相談しましょう。"; c = "#90caf9"; }
+    else { p = "フェーズ 4"; a = "ケガを予防するためにも積極的に負荷を伴った基礎パワートレーニングを取り入れてよいでしょう。並行して変換パワートレーニングやサッカーパワートレーニングを行うとより効果的です。"; c = "#42a5f5"; }
+    document.getElementById('advice-panel').style.background = c;
+    document.getElementById('phase-label').innerText = p;
+    document.getElementById('advice-text').innerText = a;
+}
+</script>
+</body>
+</html>
