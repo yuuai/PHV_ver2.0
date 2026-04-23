@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PHV & 成熟度モニタリング Pro - AWAKE</title>
+    <title>PHV & 成人身長予測 Pro - AWAKE</title>
     <style>
-        :root { --phase1: #e1f5fe; --phase2: #bbdefb; --phase3: #90caf9; --phase4: #42a5f5; --accent: #1a73e8; }
+        :root { --phase1: #e1f5fe; --phase2: #bbdefb; --phase3: #90caf9; --phase4: #42a5f5; --accent: #1a73e8; --range-color: #f57f17; }
         body { font-family: sans-serif; margin: 0; padding: 15px; background: #f0f2f5; color: #333; }
         .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
         h1 { color: var(--accent); text-align: center; font-size: 1.4rem; border-bottom: 2px solid var(--accent); padding-bottom: 8px; margin-bottom: 20px;}
@@ -13,29 +13,46 @@
         label { font-size: 0.8rem; font-weight: bold; color: #555; }
         input, select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 1rem; }
         .full-width { grid-column: span 2; }
+        .section-title { grid-column: span 2; font-size: 0.85rem; color: var(--accent); margin-top: 10px; border-left: 3px solid var(--accent); padding-left: 8px; }
         button { width: 100%; padding: 16px; background: var(--accent); color: white; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: bold; cursor: pointer; margin-top: 10px; }
         #result-area { display: none; margin-top: 25px; }
         .score-card { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
         .score-box { background: #f8f9fa; padding: 15px; border-radius: 10px; text-align: center; border-top: 4px solid var(--accent); }
         .score-label { font-size: 0.75rem; font-weight: bold; color: #666; }
         .score-val { font-size: 1.4rem; font-weight: bold; color: var(--accent); }
+        .score-unit { font-size: 0.8rem; margin-left: 2px; }
+        
+        /* 予測身長レンジのスタイル */
+        .height-range-box { grid-column: span 2; background: #fffde7; border-top: 4px solid #fbc02d; padding: 15px; border-radius: 10px; text-align: center; }
+        .range-grid { display: grid; grid-template-columns: 1fr 1.5fr 1fr; gap: 5px; align-items: center; margin-top: 10px; }
+        .range-item { font-size: 0.8rem; color: #666; }
+        .range-val { font-size: 1.1rem; font-weight: bold; color: #555; }
+        .range-val.main { font-size: 2rem; color: var(--range-color); }
+
         .score-detail { font-size: 1.1rem; font-weight: bold; color: #d32f2f; margin-top: 8px; border-top: 1px dashed #ccc; padding-top: 8px; }
         .chart-container { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 15px; margin: 15px 0; position: relative; }
         canvas { width: 100%; height: auto; display: block; }
         .advice-panel { padding: 18px; border-radius: 10px; margin-top: 15px; border-left: 6px solid #1557b0; }
-        .notes { font-size: 0.7rem; color: #777; margin-top: 20px; padding: 10px; background: #eee; border-radius: 5px; }
+        .notes { font-size: 0.7rem; color: #777; margin-top: 20px; padding: 10px; background: #eee; border-radius: 5px; line-height: 1.4; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>PHVモニタリング (JFA準拠)</h1>
+    <h1>PHV & 成人身長予測 (AWAKE)</h1>
 
     <div class="input-grid">
-        <div><label>性別</label><select id="gender"><option value="male">男子 (日本人サッカー専用式)</option><option value="female">女子 (世界標準予測式)</option></select></div>
-        <div><label>身長 (cm)</label><input type="number" id="height" step="0.1" placeholder="身長を入力"></div>
-        <div><label>体重 (kg)</label><input type="number" id="weight" step="0.1" placeholder="体重を入力"></div>
-        <div><label>座高 (cm)</label><input type="number" id="sittingHeight" step="0.1" placeholder="座高を入力"></div>
+        <div class="section-title">基本情報</div>
+        <div><label>性別</label><select id="gender"><option value="male">男子</option><option value="female">女子</option></select></div>
+        <div><label>身長 (cm)</label><input type="number" id="height" step="0.1" placeholder="本人"></div>
+        <div><label>体重 (kg)</label><input type="number" id="weight" step="0.1" placeholder="本人"></div>
+        <div><label>座高 (cm)</label><input type="number" id="sittingHeight" step="0.1" placeholder="本人"></div>
+        
+        <div class="section-title">両親の身長 (遺伝的ポテンシャル)</div>
+        <div><label>父親の身長 (cm)</label><input type="number" id="fHeight" step="0.1" placeholder="父"></div>
+        <div><label>母親の身長 (cm)</label><input type="number" id="mHeight" step="0.1" placeholder="母"></div>
+
+        <div class="section-title">日付情報</div>
         <div class="full-width"><label>生年月日</label><input type="date" id="birthDate"></div>
         <div class="full-width"><label>計測日</label><input type="date" id="testDate"></div>
     </div>
@@ -45,6 +62,17 @@
         <div class="score-card">
             <div class="score-box"><div class="score-label">現在の年齢</div><div><span class="score-val" id="res-age">--</span><span class="score-unit">歳</span></div></div>
             <div class="score-box"><div class="score-label">予測PHV年齢</div><div><span class="score-val" id="res-phv-age">--</span><span class="score-unit">歳</span></div></div>
+            
+            <div class="height-range-box">
+                <div class="score-label">予測最終身長の範囲 (Target Height)</div>
+                <div class="range-grid">
+                    <div class="range-item">最小予測<br><span class="range-val" id="res-min-h">--</span><span class="score-unit">cm</span></div>
+                    <div class="range-item">中間値(期待値)<br><span class="range-val main" id="res-target-h">--</span><span class="score-unit">cm</span></div>
+                    <div class="range-item">最大予測<br><span class="range-val" id="res-max-h">--</span><span class="score-unit">cm</span></div>
+                </div>
+                <div style="font-size: 0.75rem; color: #d32f2f; margin-top:10px; font-weight: bold;">後天的な要因（栄養・睡眠・運動）で最大値を目指せます！</div>
+            </div>
+
             <div class="score-box" style="grid-column: span 2;">
                 <div class="score-label">成熟度 (Maturity Offset)</div>
                 <div class="score-val" id="res-offset">--</div>
@@ -68,10 +96,6 @@
 
 <script>
 window.onload = function() {
-    document.getElementById('height').value = "";
-    document.getElementById('weight').value = "";
-    document.getElementById('sittingHeight').value = "";
-    document.getElementById('birthDate').value = "";
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('testDate').value = today;
 };
@@ -81,11 +105,13 @@ function calculate() {
     const h = parseFloat(document.getElementById('height').value);
     const w = parseFloat(document.getElementById('weight').value);
     const sh = parseFloat(document.getElementById('sittingHeight').value);
+    const fh = parseFloat(document.getElementById('fHeight').value);
+    const mh = parseFloat(document.getElementById('mHeight').value);
     const birthVal = document.getElementById('birthDate').value;
     const testVal = document.getElementById('testDate').value;
     
     if (!h || !w || !sh || !birthVal || !testVal) {
-        alert("未入力の項目があります。");
+        alert("本人情報の未入力項目があります。");
         return;
     }
 
@@ -94,13 +120,32 @@ function calculate() {
     const age = (testDate - birthDate) / (1000 * 60 * 60 * 24 * 365.25);
     
     let offset;
+    let logicText = "";
     if (gender === 'male') {
         const basePHV = 13.87; 
         offset = age - basePHV;
-        document.getElementById('logic-note').innerHTML = "※男子：中馬(2022) 日本人男子サッカー選手専用式準拠";
+        logicText += "・男子PHV：中馬(2022) 日本人男子サッカー選手専用式<br>";
     } else {
         offset = -7.709133 + (0.0042232 * (age * h));
-        document.getElementById('logic-note').innerHTML = "※女子：Moore(2015) 世界標準予測式";
+        logicText += "・女子PHV：Moore(2015) 世界標準予測式<br>";
+    }
+
+    // 最終身長予測 (足立式 + 変動レンジ)
+    if (fh && mh) {
+        let baseT;
+        if (gender === 'male') {
+            baseT = (fh + mh + 13) / 2 + 2.0;
+        } else {
+            baseT = (fh + mh - 13) / 2 + 2.0;
+        }
+        document.getElementById('res-target-h').innerText = baseT.toFixed(1);
+        document.getElementById('res-min-h').innerText = (baseT - 8).toFixed(1);
+        document.getElementById('res-max-h').innerText = (baseT + 8).toFixed(1);
+        logicText += "・予測身長：足立式（修正MTP法）をベースに算出<br>・予測範囲：遺伝ポテンシャルに基づく±8cmの変動幅を表示";
+    } else {
+        document.getElementById('res-target-h').innerText = "--";
+        document.getElementById('res-min-h').innerText = "--";
+        document.getElementById('res-max-h').innerText = "--";
     }
 
     const phvAge = age - offset;
@@ -118,6 +163,7 @@ function calculate() {
         ? `あと ${finalYY}年 ${finalMM}ヶ月` 
         : `PHVから ${finalYY}年 ${finalMM}ヶ月 経過`;
 
+    document.getElementById('logic-note').innerHTML = "【計算根拠】<br>" + logicText + "<br>※予測範囲は、遺伝に加え栄養・睡眠・生活環境等によって変動する一般的な幅(±8cm)を示したものです。";
     document.getElementById('result-area').style.display = 'block';
     drawChart(offset);
     setAdvice(offset);
@@ -128,11 +174,8 @@ function drawChart(currentOffset) {
     const ctx = canvas.getContext('2d');
     const cw = canvas.width, ch = canvas.height, padding = 40;
     ctx.clearRect(0, 0, cw, ch);
-
-    // フェーズ背景色の描画領域設定
     const getX = (offset) => padding + ((offset + 5) / 10) * (cw - padding * 2);
     
-    // 背景色の描画 (JFAフェーズ区分に準拠)
     const phases = [
         { start: -5, end: -2.5, color: '#e1f5fe', label: 'F1' },
         { start: -2.5, end: -1.0, color: '#bbdefb', label: 'F2' },
@@ -146,14 +189,11 @@ function drawChart(currentOffset) {
         const xEnd = getX(p.end);
         ctx.fillStyle = p.color;
         ctx.fillRect(xStart, padding, xEnd - xStart, ch - padding * 2);
-        
-        // ラベル描画
         ctx.fillStyle = '#555';
         ctx.font = 'bold 10px sans-serif';
         ctx.fillText(p.label, xStart + 5, padding + 15);
     });
 
-    // 軸と曲線の描画
     ctx.beginPath(); ctx.strokeStyle = '#999'; ctx.lineWidth = 1;
     ctx.moveTo(padding, ch - padding); ctx.lineTo(cw - padding, ch - padding); ctx.stroke();
     
@@ -167,13 +207,11 @@ function drawChart(currentOffset) {
     }
     ctx.stroke();
 
-    // 現在地のマーカー
     let markerX = getX(currentOffset);
     let markerVal = Math.exp(-Math.pow(currentOffset, 2) / 5);
     let markerY = (ch - padding) - (markerVal * (ch - padding * 2) * 0.8);
     markerX = Math.max(padding, Math.min(cw - padding, markerX));
     
-    // マーカー影
     ctx.shadowBlur = 10; ctx.shadowColor = "rgba(0,0,0,0.3)";
     ctx.beginPath(); ctx.fillStyle = '#ff1744'; ctx.arc(markerX, markerY, 8, 0, Math.PI * 2); ctx.fill();
     ctx.shadowBlur = 0;
