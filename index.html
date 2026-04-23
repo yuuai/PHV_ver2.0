@@ -15,6 +15,7 @@
         .full-width { grid-column: span 2; }
         .section-title { grid-column: span 2; font-size: 0.85rem; color: var(--accent); margin-top: 10px; border-left: 3px solid var(--accent); padding-left: 8px; }
         button { width: 100%; padding: 16px; background: var(--accent); color: white; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        
         #result-area { display: none; margin-top: 25px; }
         .score-card { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
         .score-box { background: #f8f9fa; padding: 15px; border-radius: 10px; text-align: center; border-top: 4px solid var(--accent); }
@@ -34,7 +35,6 @@
         .nutri-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
         .nutri-val { font-size: 1.3rem; font-weight: bold; color: #33691e; }
 
-        .score-detail { font-size: 1.1rem; font-weight: bold; color: #d32f2f; margin-top: 8px; border-top: 1px dashed #ccc; padding-top: 8px; }
         .chart-container { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 15px; margin: 15px 0; position: relative; }
         canvas { width: 100%; height: auto; display: block; }
         .advice-panel { padding: 18px; border-radius: 10px; margin-top: 15px; border-left: 6px solid #1557b0; }
@@ -53,10 +53,6 @@
         <div><label>体重 (kg)</label><input type="number" id="weight" step="0.1" placeholder="本人"></div>
         <div><label>座高 (cm)</label><input type="number" id="sittingHeight" step="0.1" placeholder="本人"></div>
         
-        <div class="section-title">前回データ（自動記録）</div>
-        <div><label>前回の身長 (cm)</label><input type="number" id="prevHeight" step="0.1" placeholder="自動読込可"></div>
-        <div><label>前回の計測日</label><input type="date" id="prevDate"></div>
-
         <div class="section-title">両親の身長 (遺伝要因)</div>
         <div><label>父親の身長 (cm)</label><input type="number" id="fHeight" step="0.1" placeholder="父"></div>
         <div><label>母親の身長 (cm)</label><input type="number" id="mHeight" step="0.1" placeholder="母"></div>
@@ -65,19 +61,13 @@
         <div class="full-width"><label>生年月日</label><input type="date" id="birthDate"></div>
         <div class="full-width"><label>計測日</label><input type="date" id="testDate"></div>
     </div>
-    <button onclick="calculate()">分析・保存</button>
+    <button onclick="calculate()">分析を開始</button>
 
     <div id="result-area">
         <div class="score-card">
             <div class="score-box"><div class="score-label">現在の年齢</div><div><span class="score-val" id="res-age">--</span>歳</div></div>
             <div class="score-box"><div class="score-label">成熟タイプ</div><div><span class="score-val" id="res-type" style="color:#e91e63;">--</span></div></div>
             
-            <div class="score-box" style="grid-column: span 2;">
-                <div class="score-label">年間成長速度 (実測値)</div>
-                <div class="score-val" id="res-velocity">--</div>
-                <div id="velocity-note" style="font-size:0.7rem; color:#888;"></div>
-            </div>
-
             <div class="height-range-box">
                 <div class="score-label">予測最終身長の範囲 (足立式)</div>
                 <div class="range-grid">
@@ -98,7 +88,7 @@
             <div class="score-box" style="grid-column: span 2;">
                 <div class="score-label">PHV年齢 ＆ 成熟度</div>
                 <div class="score-val" id="res-phv-age">--</div>
-                <div class="score-detail" id="res-ym">--</div>
+                <div id="res-ym" style="font-size:1.1rem; font-weight:bold; color:#d32f2f; margin-top:8px;">--</div>
             </div>
         </div>
 
@@ -116,14 +106,7 @@
 
 <script>
 window.onload = function() {
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('testDate').value = today;
-    // 前回データの自動読込
-    const saved = JSON.parse(localStorage.getItem('awake_prev_data'));
-    if(saved) {
-        document.getElementById('prevHeight').value = saved.h;
-        document.getElementById('prevDate').value = saved.d;
-    }
+    document.getElementById('testDate').value = new Date().toISOString().split('T')[0];
 };
 
 function calculate() {
@@ -135,14 +118,12 @@ function calculate() {
     const mh = parseFloat(document.getElementById('mHeight').value);
     const bVal = document.getElementById('birthDate').value;
     const tVal = document.getElementById('testDate').value;
-    const ph = parseFloat(document.getElementById('prevHeight').value);
-    const pdVal = document.getElementById('prevDate').value;
     
-    if (!h || !w || !sh || !bVal || !tVal) { alert("本人情報を入力してください。"); return; }
+    if (!h || !w || !sh || !bVal || !tVal) { alert("必須項目をすべて入力してください。"); return; }
 
     const age = (new Date(tVal) - new Date(bVal)) / (1000*60*60*24*365.25);
     
-    // 1. PHV計算 (ロジック不変)
+    // 1. PHV計算
     let offset = (gender === 'male') ? age - 13.87 : -7.709133 + (0.0042232 * (age * h));
     const phvAge = age - offset;
 
@@ -154,15 +135,7 @@ function calculate() {
         type = phvAge < 10.5 ? "早熟型" : phvAge > 12.5 ? "晩成型" : "標準型";
     }
 
-    // 3. 実測成長速度
-    if(ph && pdVal) {
-        const diffDays = (new Date(tVal) - new Date(pdVal)) / (1000*60*60*24);
-        const v = ((h - ph) / diffDays) * 365.25;
-        document.getElementById('res-velocity').innerText = v.toFixed(1) + " cm/年";
-        document.getElementById('velocity-note').innerText = `前回から ${Math.round(diffDays)} 日間の推移`;
-    }
-
-    // 4. 将来身長
+    // 3. 将来身長
     if(fh && mh) {
         const baseT = (gender==='male' ? (fh+mh+13)/2 : (fh+mh-13)/2) + 2.0;
         document.getElementById('res-target-h').innerText = baseT.toFixed(1);
@@ -170,22 +143,20 @@ function calculate() {
         document.getElementById('res-max-h').innerText = (baseT + 8).toFixed(1);
     }
 
-    // 5. 栄養アドバイス (アスリート活動係数 2.0想定)
-    const kcal = Math.round((w * 30 + 500) * 2.0 * (age < 15 ? 0.85 : 0.9)); // 簡易アスリート式
+    // 4. 栄養アドバイス
+    const kcal = Math.round((w * 30 + 500) * 1.8); 
     document.getElementById('res-kcal').innerText = kcal.toLocaleString();
     document.getElementById('res-protein').innerText = Math.round(w * 2.0);
 
     // 表示更新
     document.getElementById('res-age').innerText = age.toFixed(2);
-    document.getElementById('res-phv-age').innerText = `PHV年齢: ${phvAge.toFixed(2)} 歳`;
+    document.getElementById('res-phv-age').innerText = `${phvAge.toFixed(2)} 歳`;
     document.getElementById('res-type').innerText = type;
-    document.getElementById('res-ym').innerText = offset < 0 ? `あと ${Math.abs(offset).toFixed(1)} 年` : `ピークから ${offset.toFixed(1)} 年経過`;
+    document.getElementById('res-ym').innerText = offset < 0 ? `ピークまで あと ${Math.abs(offset).toFixed(1)} 年` : `ピークから ${offset.toFixed(1)} 年経過`;
     
-    document.getElementById('logic-note').innerHTML = "【根拠】男子:中馬(2022) / 女子:Moore(2015) / 身長:足立式 / 栄養:日本人の食事摂取基準2025参照";
+    document.getElementById('logic-note').innerHTML = "【根拠】男子:中馬(2022) / 女子:Moore(2015) / 身長:足立式 / 栄養:日本人の食事摂取基準参照";
     document.getElementById('result-area').style.display = 'block';
     
-    // データ保存 (LocalStorage)
-    localStorage.setItem('awake_prev_data', JSON.stringify({h: h, d: tVal}));
     drawChart(offset);
     setAdvice(offset);
 }
@@ -217,7 +188,7 @@ function setAdvice(offset) {
     if(offset < -2.5){ p="F1: 動作習得期"; a="様々な動きを経験しましょう。"; c="#e1f5fe"; }
     else if(offset < -1.0){ p="F2: 準備期"; a="自重での体幹・動作トレーニングを開始。"; c="#bbdefb"; }
     else if(offset < 1.0){ p="F3: ピーク期"; a="急激な成長期。柔軟性低下に注意し、低負荷の補強を。"; c="#90caf9"; }
-    else { p="F4: 強化期"; a="骨格が安定。本格的な筋力・パワートレーニングが可能です。"; c="#42a5f5"; }
+    else { p="F4: 強化期"; a="骨格が安定。本格的な筋力強化が可能です。"; c="#42a5f5"; }
     document.getElementById('advice-panel').style.background = c;
     document.getElementById('phase-label').innerText = p;
     document.getElementById('advice-text').innerText = a;
