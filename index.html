@@ -22,12 +22,17 @@
         .score-val { font-size: 1.4rem; font-weight: bold; color: var(--accent); }
         .score-unit { font-size: 0.8rem; margin-left: 2px; }
         
-        /* 予測身長レンジのスタイル */
+        /* 予測身長レンジ */
         .height-range-box { grid-column: span 2; background: #fffde7; border-top: 4px solid #fbc02d; padding: 15px; border-radius: 10px; text-align: center; }
         .range-grid { display: grid; grid-template-columns: 1fr 1.5fr 1fr; gap: 5px; align-items: center; margin-top: 10px; }
         .range-item { font-size: 0.8rem; color: #666; }
         .range-val { font-size: 1.1rem; font-weight: bold; color: #555; }
         .range-val.main { font-size: 2rem; color: var(--range-color); }
+
+        /* 栄養アドバイス */
+        .nutrition-box { grid-column: span 2; background: #f1f8e9; border-top: 4px solid #7cb342; padding: 15px; border-radius: 10px; text-align: center; margin-top: 10px; }
+        .nutri-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+        .nutri-val { font-size: 1.3rem; font-weight: bold; color: #33691e; }
 
         .score-detail { font-size: 1.1rem; font-weight: bold; color: #d32f2f; margin-top: 8px; border-top: 1px dashed #ccc; padding-top: 8px; }
         .chart-container { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 15px; margin: 15px 0; position: relative; }
@@ -48,7 +53,11 @@
         <div><label>体重 (kg)</label><input type="number" id="weight" step="0.1" placeholder="本人"></div>
         <div><label>座高 (cm)</label><input type="number" id="sittingHeight" step="0.1" placeholder="本人"></div>
         
-        <div class="section-title">両親の身長 (遺伝的ポテンシャル)</div>
+        <div class="section-title">前回データ（自動記録）</div>
+        <div><label>前回の身長 (cm)</label><input type="number" id="prevHeight" step="0.1" placeholder="自動読込可"></div>
+        <div><label>前回の計測日</label><input type="date" id="prevDate"></div>
+
+        <div class="section-title">両親の身長 (遺伝要因)</div>
         <div><label>父親の身長 (cm)</label><input type="number" id="fHeight" step="0.1" placeholder="父"></div>
         <div><label>母親の身長 (cm)</label><input type="number" id="mHeight" step="0.1" placeholder="母"></div>
 
@@ -56,32 +65,44 @@
         <div class="full-width"><label>生年月日</label><input type="date" id="birthDate"></div>
         <div class="full-width"><label>計測日</label><input type="date" id="testDate"></div>
     </div>
-    <button onclick="calculate()">分析・グラフ作成</button>
+    <button onclick="calculate()">分析・保存</button>
 
     <div id="result-area">
         <div class="score-card">
-            <div class="score-box"><div class="score-label">現在の年齢</div><div><span class="score-val" id="res-age">--</span><span class="score-unit">歳</span></div></div>
-            <div class="score-box"><div class="score-label">予測PHV年齢</div><div><span class="score-val" id="res-phv-age">--</span><span class="score-unit">歳</span></div></div>
+            <div class="score-box"><div class="score-label">現在の年齢</div><div><span class="score-val" id="res-age">--</span>歳</div></div>
+            <div class="score-box"><div class="score-label">成熟タイプ</div><div><span class="score-val" id="res-type" style="color:#e91e63;">--</span></div></div>
             
+            <div class="score-box" style="grid-column: span 2;">
+                <div class="score-label">年間成長速度 (実測値)</div>
+                <div class="score-val" id="res-velocity">--</div>
+                <div id="velocity-note" style="font-size:0.7rem; color:#888;"></div>
+            </div>
+
             <div class="height-range-box">
-                <div class="score-label">予測最終身長の範囲 (Target Height)</div>
+                <div class="score-label">予測最終身長の範囲 (足立式)</div>
                 <div class="range-grid">
-                    <div class="range-item">最小予測<br><span class="range-val" id="res-min-h">--</span><span class="score-unit">cm</span></div>
-                    <div class="range-item">中間値(期待値)<br><span class="range-val main" id="res-target-h">--</span><span class="score-unit">cm</span></div>
-                    <div class="range-item">最大予測<br><span class="range-val" id="res-max-h">--</span><span class="score-unit">cm</span></div>
+                    <div class="range-item">最小<br><span class="range-val" id="res-min-h">--</span>cm</div>
+                    <div class="range-item">中間値<br><span class="range-val main" id="res-target-h">--</span>cm</div>
+                    <div class="range-item">最大<br><span class="range-val" id="res-max-h">--</span>cm</div>
                 </div>
-                <div style="font-size: 0.75rem; color: #d32f2f; margin-top:10px; font-weight: bold;">後天的な要因（栄養・睡眠・運動）で最大値を目指せます！</div>
+            </div>
+
+            <div class="nutrition-box">
+                <div class="score-label">アスリート向け栄養指標 (目安)</div>
+                <div class="nutri-grid">
+                    <div><div class="score-label">推定必要エネルギー</div><span class="nutri-val" id="res-kcal">--</span><span class="score-unit">kcal/日</span></div>
+                    <div><div class="score-label">目標タンパク質量</div><span class="nutri-val" id="res-protein">--</span><span class="score-unit">g/日</span></div>
+                </div>
             </div>
 
             <div class="score-box" style="grid-column: span 2;">
-                <div class="score-label">成熟度 (Maturity Offset)</div>
-                <div class="score-val" id="res-offset">--</div>
+                <div class="score-label">PHV年齢 ＆ 成熟度</div>
+                <div class="score-val" id="res-phv-age">--</div>
                 <div class="score-detail" id="res-ym">--</div>
             </div>
         </div>
 
         <div class="chart-container">
-            <p style="font-size: 0.8rem; margin: 0 0 10px 0; font-weight: bold; text-align: center;">身長発育速度曲線と各フェーズ</p>
             <canvas id="velocityChart" width="500" height="250"></canvas>
         </div>
 
@@ -89,7 +110,6 @@
             <div id="phase-label" style="font-weight:bold; color:#1557b0; font-size:1.2rem;"></div>
             <div id="advice-text" style="font-size:0.9rem; white-space:pre-wrap; margin-top:10px; line-height:1.6;"></div>
         </div>
-
         <div class="notes" id="logic-note"></div>
     </div>
 </div>
@@ -98,6 +118,12 @@
 window.onload = function() {
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('testDate').value = today;
+    // 前回データの自動読込
+    const saved = JSON.parse(localStorage.getItem('awake_prev_data'));
+    if(saved) {
+        document.getElementById('prevHeight').value = saved.h;
+        document.getElementById('prevDate').value = saved.d;
+    }
 };
 
 function calculate() {
@@ -107,64 +133,59 @@ function calculate() {
     const sh = parseFloat(document.getElementById('sittingHeight').value);
     const fh = parseFloat(document.getElementById('fHeight').value);
     const mh = parseFloat(document.getElementById('mHeight').value);
-    const birthVal = document.getElementById('birthDate').value;
-    const testVal = document.getElementById('testDate').value;
+    const bVal = document.getElementById('birthDate').value;
+    const tVal = document.getElementById('testDate').value;
+    const ph = parseFloat(document.getElementById('prevHeight').value);
+    const pdVal = document.getElementById('prevDate').value;
     
-    if (!h || !w || !sh || !birthVal || !testVal) {
-        alert("本人情報の未入力項目があります。");
-        return;
-    }
+    if (!h || !w || !sh || !bVal || !tVal) { alert("本人情報を入力してください。"); return; }
 
-    const birthDate = new Date(birthVal);
-    const testDate = new Date(testVal);
-    const age = (testDate - birthDate) / (1000 * 60 * 60 * 24 * 365.25);
+    const age = (new Date(tVal) - new Date(bVal)) / (1000*60*60*24*365.25);
     
-    let offset;
-    let logicText = "";
-    if (gender === 'male') {
-        const basePHV = 13.87; 
-        offset = age - basePHV;
-        logicText += "・男子PHV：中馬(2022) 日本人男子サッカー選手専用式<br>";
+    // 1. PHV計算 (ロジック不変)
+    let offset = (gender === 'male') ? age - 13.87 : -7.709133 + (0.0042232 * (age * h));
+    const phvAge = age - offset;
+
+    // 2. 成長タイプ判定
+    let type = "";
+    if(gender === 'male') {
+        type = phvAge < 12.5 ? "早熟型" : phvAge > 14.5 ? "晩成型" : "標準型";
     } else {
-        offset = -7.709133 + (0.0042232 * (age * h));
-        logicText += "・女子PHV：Moore(2015) 世界標準予測式<br>";
+        type = phvAge < 10.5 ? "早熟型" : phvAge > 12.5 ? "晩成型" : "標準型";
     }
 
-    // 最終身長予測 (足立式 + 変動レンジ)
-    if (fh && mh) {
-        let baseT;
-        if (gender === 'male') {
-            baseT = (fh + mh + 13) / 2 + 2.0;
-        } else {
-            baseT = (fh + mh - 13) / 2 + 2.0;
-        }
+    // 3. 実測成長速度
+    if(ph && pdVal) {
+        const diffDays = (new Date(tVal) - new Date(pdVal)) / (1000*60*60*24);
+        const v = ((h - ph) / diffDays) * 365.25;
+        document.getElementById('res-velocity').innerText = v.toFixed(1) + " cm/年";
+        document.getElementById('velocity-note').innerText = `前回から ${Math.round(diffDays)} 日間の推移`;
+    }
+
+    // 4. 将来身長
+    if(fh && mh) {
+        const baseT = (gender==='male' ? (fh+mh+13)/2 : (fh+mh-13)/2) + 2.0;
         document.getElementById('res-target-h').innerText = baseT.toFixed(1);
         document.getElementById('res-min-h').innerText = (baseT - 8).toFixed(1);
         document.getElementById('res-max-h').innerText = (baseT + 8).toFixed(1);
-        logicText += "・予測身長：足立式（修正MTP法）をベースに算出<br>・予測範囲：遺伝ポテンシャルに基づく±8cmの変動幅を表示";
-    } else {
-        document.getElementById('res-target-h').innerText = "--";
-        document.getElementById('res-min-h').innerText = "--";
-        document.getElementById('res-max-h').innerText = "--";
     }
 
-    const phvAge = age - offset;
+    // 5. 栄養アドバイス (アスリート活動係数 2.0想定)
+    const kcal = Math.round((w * 30 + 500) * 2.0 * (age < 15 ? 0.85 : 0.9)); // 簡易アスリート式
+    document.getElementById('res-kcal').innerText = kcal.toLocaleString();
+    document.getElementById('res-protein').innerText = Math.round(w * 2.0);
+
+    // 表示更新
     document.getElementById('res-age').innerText = age.toFixed(2);
-    document.getElementById('res-phv-age').innerText = phvAge.toFixed(2);
-    document.getElementById('res-offset').innerText = (offset > 0 ? "+" : "") + offset.toFixed(2) + " 歳";
-
-    const absO = Math.abs(offset);
-    const yy = Math.floor(absO);
-    const mm = Math.round((absO - yy) * 12);
-    const finalYY = mm === 12 ? yy + 1 : yy;
-    const finalMM = mm === 12 ? 0 : mm;
-
-    document.getElementById('res-ym').innerText = (offset < 0) 
-        ? `あと ${finalYY}年 ${finalMM}ヶ月` 
-        : `PHVから ${finalYY}年 ${finalMM}ヶ月 経過`;
-
-    document.getElementById('logic-note').innerHTML = "【計算根拠】<br>" + logicText + "<br>※予測範囲は、遺伝に加え栄養・睡眠・生活環境等によって変動する一般的な幅(±8cm)を示したものです。";
+    document.getElementById('res-phv-age').innerText = `PHV年齢: ${phvAge.toFixed(2)} 歳`;
+    document.getElementById('res-type').innerText = type;
+    document.getElementById('res-ym').innerText = offset < 0 ? `あと ${Math.abs(offset).toFixed(1)} 年` : `ピークから ${offset.toFixed(1)} 年経過`;
+    
+    document.getElementById('logic-note').innerHTML = "【根拠】男子:中馬(2022) / 女子:Moore(2015) / 身長:足立式 / 栄養:日本人の食事摂取基準2025参照";
     document.getElementById('result-area').style.display = 'block';
+    
+    // データ保存 (LocalStorage)
+    localStorage.setItem('awake_prev_data', JSON.stringify({h: h, d: tVal}));
     drawChart(offset);
     setAdvice(offset);
 }
@@ -174,56 +195,29 @@ function drawChart(currentOffset) {
     const ctx = canvas.getContext('2d');
     const cw = canvas.width, ch = canvas.height, padding = 40;
     ctx.clearRect(0, 0, cw, ch);
-    const getX = (offset) => padding + ((offset + 5) / 10) * (cw - padding * 2);
-    
-    const phases = [
-        { start: -5, end: -2.5, color: '#e1f5fe', label: 'F1' },
-        { start: -2.5, end: -1.0, color: '#bbdefb', label: 'F2' },
-        { start: -1.0, end: 1.0, color: '#90caf9', label: 'F3' },
-        { start: 1.0, end: 3.5, color: '#42a5f5', label: 'F4' },
-        { start: 3.5, end: 5, color: '#1e88e5', label: '' }
-    ];
-
+    const getX = (o) => padding + ((o + 5) / 10) * (cw - padding * 2);
+    const phases = [{s:-5, e:-2.5, c:'#e1f5fe', l:'F1'}, {s:-2.5, e:-1, c:'#bbdefb', l:'F2'}, {s:-1, e:1, c:'#90caf9', l:'F3'}, {s:1, e:3.5, c:'#42a5f5', l:'F4'}];
     phases.forEach(p => {
-        const xStart = getX(p.start);
-        const xEnd = getX(p.end);
-        ctx.fillStyle = p.color;
-        ctx.fillRect(xStart, padding, xEnd - xStart, ch - padding * 2);
-        ctx.fillStyle = '#555';
-        ctx.font = 'bold 10px sans-serif';
-        ctx.fillText(p.label, xStart + 5, padding + 15);
+        ctx.fillStyle = p.c;
+        ctx.fillRect(getX(p.s), padding, getX(p.e)-getX(p.s), ch-padding*2);
+        ctx.fillStyle='#555'; ctx.fillText(p.l, getX(p.s)+5, padding+15);
     });
-
-    ctx.beginPath(); ctx.strokeStyle = '#999'; ctx.lineWidth = 1;
-    ctx.moveTo(padding, ch - padding); ctx.lineTo(cw - padding, ch - padding); ctx.stroke();
-    
     ctx.beginPath(); ctx.strokeStyle = '#1a73e8'; ctx.lineWidth = 3;
-    for (let i = 0; i <= 100; i++) {
-        let xVal = -5 + (i / 100) * 10;
-        let xPos = getX(xVal);
-        let yVal = Math.exp(-Math.pow(xVal, 2) / 5); 
-        let yPos = (ch - padding) - (yVal * (ch - padding * 2) * 0.8);
-        if (i === 0) ctx.moveTo(xPos, yPos); else ctx.lineTo(xPos, yPos);
+    for (let i=0; i<=100; i++) {
+        let xVal = -5 + (i/100)*10, xPos = getX(xVal);
+        let yPos = (ch-padding) - (Math.exp(-Math.pow(xVal,2)/5) * (ch-padding*2) * 0.8);
+        i===0 ? ctx.moveTo(xPos, yPos) : ctx.lineTo(xPos, yPos);
     }
     ctx.stroke();
-
-    let markerX = getX(currentOffset);
-    let markerVal = Math.exp(-Math.pow(currentOffset, 2) / 5);
-    let markerY = (ch - padding) - (markerVal * (ch - padding * 2) * 0.8);
-    markerX = Math.max(padding, Math.min(cw - padding, markerX));
-    
-    ctx.shadowBlur = 10; ctx.shadowColor = "rgba(0,0,0,0.3)";
-    ctx.beginPath(); ctx.fillStyle = '#ff1744'; ctx.arc(markerX, markerY, 8, 0, Math.PI * 2); ctx.fill();
-    ctx.shadowBlur = 0;
-    ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.stroke();
+    ctx.beginPath(); ctx.fillStyle='#ff1744'; ctx.arc(getX(currentOffset), (ch-padding)-(Math.exp(-Math.pow(currentOffset,2)/5)*(ch-padding*2)*0.8), 8, 0, 7); ctx.fill();
 }
 
 function setAdvice(offset) {
-    let p = "", a = "", c = "";
-    if (offset < -2.5) { p = "フェーズ 1"; a = "積極的にいろいろな動きをとりいれて、動きづくりをしましょう。バランス感覚を大切にしながら遊びの中で相手との力比べをしてみましょう。転んでもケガをしないように前転や後転などの身なしを身につけることも大切です。"; c = "#e1f5fe"; }
-    else if (offset < -1.0) { p = "フェーズ 2"; a = "自分の体重を利用したエクササイズを開始しましょう。コアトレーニングやムーブメントプレパレーションがおすすめです。正しい動作を身につけて、初めは少ない回数から徐々に増やしましょう。"; c = "#bbdefb"; }
-    else if (offset < 1.0) { p = "フェーズ 3 (ピーク期)"; a = "ゴムチューブや軽い負荷での基礎パワートレーニングを導入し始めても良い段階です。ジャンプ動作なども低い高さから始めます。少ない回数、少ないセット数で十分です。無理せず専門家と相談しましょう。"; c = "#90caf9"; }
-    else { p = "フェーズ 4"; a = "ケガを予防するためにも積極的に負荷を伴った基礎パワートレーニングを取り入れてよいでしょう。並行して変換パワートレーニングやサッカーパワートレーニングを行うとより効果的です。"; c = "#42a5f5"; }
+    let p="", a="", c="";
+    if(offset < -2.5){ p="F1: 動作習得期"; a="様々な動きを経験しましょう。"; c="#e1f5fe"; }
+    else if(offset < -1.0){ p="F2: 準備期"; a="自重での体幹・動作トレーニングを開始。"; c="#bbdefb"; }
+    else if(offset < 1.0){ p="F3: ピーク期"; a="急激な成長期。柔軟性低下に注意し、低負荷の補強を。"; c="#90caf9"; }
+    else { p="F4: 強化期"; a="骨格が安定。本格的な筋力・パワートレーニングが可能です。"; c="#42a5f5"; }
     document.getElementById('advice-panel').style.background = c;
     document.getElementById('phase-label').innerText = p;
     document.getElementById('advice-text').innerText = a;
