@@ -1,6 +1,14 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-BZ3JD1DY4V"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-BZ3JD1DY4V');
+    </script>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PHV & 成人身長予測 Pro - AWAKE</title>
@@ -23,14 +31,12 @@
         .score-val { font-size: 1.4rem; font-weight: bold; color: var(--accent); }
         .score-unit { font-size: 0.8rem; margin-left: 2px; }
         
-        /* 予測身長レンジ */
         .height-range-box { grid-column: span 2; background: #fffde7; border-top: 4px solid #fbc02d; padding: 15px; border-radius: 10px; text-align: center; }
         .range-grid { display: grid; grid-template-columns: 1fr 1.5fr 1fr; gap: 5px; align-items: center; margin-top: 10px; }
         .range-item { font-size: 0.8rem; color: #666; }
         .range-val { font-size: 1.1rem; font-weight: bold; color: #555; }
         .range-val.main { font-size: 2rem; color: var(--range-color); }
 
-        /* 栄養アドバイス */
         .nutrition-box { grid-column: span 2; background: #f1f8e9; border-top: 4px solid #7cb342; padding: 15px; border-radius: 10px; text-align: center; margin-top: 10px; }
         .nutri-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
         .nutri-val { font-size: 1.3rem; font-weight: bold; color: #33691e; }
@@ -123,11 +129,9 @@ function calculate() {
 
     const age = (new Date(tVal) - new Date(bVal)) / (1000*60*60*24*365.25);
     
-    // 1. PHV計算
     let offset = (gender === 'male') ? age - 13.87 : -7.709133 + (0.0042232 * (age * h));
     const phvAge = age - offset;
 
-    // 2. 成長タイプ判定
     let type = "";
     if(gender === 'male') {
         type = phvAge < 12.5 ? "早熟型" : phvAge > 14.5 ? "晩成型" : "標準型";
@@ -135,7 +139,6 @@ function calculate() {
         type = phvAge < 10.5 ? "早熟型" : phvAge > 12.5 ? "晩成型" : "標準型";
     }
 
-    // 3. 将来身長
     if(fh && mh) {
         const baseT = (gender==='male' ? (fh+mh+13)/2 : (fh+mh-13)/2) + 2.0;
         document.getElementById('res-target-h').innerText = baseT.toFixed(1);
@@ -143,12 +146,10 @@ function calculate() {
         document.getElementById('res-max-h').innerText = (baseT + 8).toFixed(1);
     }
 
-    // 4. 栄養アドバイス
     const kcal = Math.round((w * 30 + 500) * 1.8); 
     document.getElementById('res-kcal').innerText = kcal.toLocaleString();
     document.getElementById('res-protein').innerText = Math.round(w * 2.0);
 
-    // 表示更新
     document.getElementById('res-age').innerText = age.toFixed(2);
     document.getElementById('res-phv-age').innerText = `${phvAge.toFixed(2)} 歳`;
     document.getElementById('res-type').innerText = type;
